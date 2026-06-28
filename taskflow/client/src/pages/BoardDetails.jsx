@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import DeleteTaskModal from '../components/DeleteTaskModal.jsx'
 import StatusColumn from '../components/StatusColumn.jsx'
 import TaskModal from '../components/TaskModal.jsx'
@@ -174,6 +175,7 @@ function BoardDetails() {
     const data = await createTask({ ...formData, status: createStatus })
     setTasks((prev) => [data.task, ...prev])
     setIsCreateOpen(false)
+    toast.success(`Task "${data.task.title}" created!`)
   }
 
   const handleUpdate = async (formData) => {
@@ -182,14 +184,20 @@ function BoardDetails() {
       prev.map((t) => (t._id === editingTask._id ? data.task : t)),
     )
     setEditingTask(null)
+    toast.success('Task updated!')
   }
 
   const handleDelete = async () => {
     try {
       setIsDeletingTask(true)
+      const taskTitle = deletingTask.title
       await deleteTask(deletingTask._id)
       setTasks((prev) => prev.filter((t) => t._id !== deletingTask._id))
       setDeletingTask(null)
+      toast.success(`Task "${taskTitle}" deleted`)
+    } catch (err) {
+      toast.error('Failed to delete task')
+      console.error(err)
     } finally {
       setIsDeletingTask(false)
     }
@@ -201,6 +209,11 @@ function BoardDetails() {
       'in-progress': 'done',
       done: 'todo',
     }
+    const STATUS_LABEL = {
+      'in-progress': 'In Progress',
+      done: 'Done',
+      todo: 'To Do',
+    }
     const nextStatus = STATUS_CYCLE[task.status]
 
     try {
@@ -209,7 +222,9 @@ function BoardDetails() {
       setTasks((prev) =>
         prev.map((t) => (t._id === task._id ? data.task : t)),
       )
+      toast.success(`Moved to ${STATUS_LABEL[nextStatus]}`)
     } catch (err) {
+      toast.error('Failed to move task')
       console.error('Failed to move task status:', err)
     } finally {
       setMovingTaskId(null)

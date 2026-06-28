@@ -38,7 +38,7 @@ function DeleteTaskModal({ task, onConfirm, onClose, isDeleting = false }) {
         </h2>
         <p className="mt-2 text-sm text-slate-500">
           Are you sure you want to delete{' '}
-          <strong className="text-slate-700">"{task.title}"</strong>? This
+          <strong className="text-slate-700">&ldquo;{task.title}&rdquo;</strong>? This
           action cannot be undone.
         </p>
 

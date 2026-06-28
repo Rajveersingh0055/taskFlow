@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import toast from 'react-hot-toast'
 import api from '../services/api'
 import {
   getCurrentUser,
@@ -41,6 +42,7 @@ function AuthProvider({ children }) {
     async (credentials) => {
       const authData = await loginRequest(credentials)
       saveSession(authData)
+      toast.success(`Welcome back, ${authData.user?.name || 'there'}! 👋`)
       return authData
     },
     [saveSession],
@@ -51,6 +53,7 @@ function AuthProvider({ children }) {
     delete api.defaults.headers.common.Authorization
     setToken(null)
     setUser(null)
+    toast.success('Logged out successfully')
   }, [])
 
   useEffect(() => {

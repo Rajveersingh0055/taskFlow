@@ -7,6 +7,7 @@ const requireDatabase = require('./middleware/dbMiddleware')
 const authRoutes = require('./routes/authRoutes')
 const boardRoutes = require('./routes/boardRoutes')
 const taskRoutes = require('./routes/taskRoutes')
+const aiRoutes = require('./routes/aiRoutes')
 
 dotenv.config()
 
@@ -19,6 +20,7 @@ app.use(express.json())
 app.use('/api/auth', requireDatabase, authRoutes)
 app.use('/api/boards', requireDatabase, boardRoutes)
 app.use('/api/tasks', requireDatabase, taskRoutes)
+app.use('/api/ai', aiRoutes) // No DB needed for AI calls
 
 app.get('/', (req, res) => {
   res.status(200).json({
