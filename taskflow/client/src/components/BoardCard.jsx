@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+
 const ACCENT_COLORS = [
   '#8b5cf6', // violet
   '#3b82f6', // blue
@@ -17,6 +19,7 @@ const formatDate = (dateStr) =>
   })
 
 function BoardCard({ board, index, onEdit, onDelete }) {
+  const navigate = useNavigate()
   const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length]
 
   return (
@@ -52,6 +55,15 @@ function BoardCard({ board, index, onEdit, onDelete }) {
         </time>
 
         <div className="flex gap-1">
+          <button
+            type="button"
+            id={`view-board-${board._id}`}
+            onClick={() => navigate(`/boards/${board._id}`)}
+            aria-label={`View ${board.title}`}
+            className="rounded-md px-3 py-1.5 text-xs font-semibold text-primary-600 transition hover:bg-primary-50 hover:text-primary-800 active:scale-95"
+          >
+            View Board →
+          </button>
           <button
             type="button"
             onClick={onEdit}

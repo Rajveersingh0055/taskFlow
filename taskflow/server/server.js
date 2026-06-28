@@ -6,6 +6,7 @@ const { connectDBWithRetry } = require('./config/db')
 const requireDatabase = require('./middleware/dbMiddleware')
 const authRoutes = require('./routes/authRoutes')
 const boardRoutes = require('./routes/boardRoutes')
+const taskRoutes = require('./routes/taskRoutes')
 
 dotenv.config()
 
@@ -17,6 +18,7 @@ app.use(express.json())
 
 app.use('/api/auth', requireDatabase, authRoutes)
 app.use('/api/boards', requireDatabase, boardRoutes)
+app.use('/api/tasks', requireDatabase, taskRoutes)
 
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -33,9 +35,10 @@ app.use((req, res) => {
   })
 })
 
+connectDBWithRetry()
+
 const server = app.listen(PORT, () => {
   console.log(`TaskFlow server running on port ${PORT}`)
-  connectDBWithRetry()
 })
 
 server.on('error', (error) => {

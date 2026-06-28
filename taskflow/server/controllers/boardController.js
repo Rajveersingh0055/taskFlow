@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const Board = require('../models/Board')
+const Task = require('../models/Task')
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -42,9 +43,10 @@ const createBoard = async (req, res) => {
 
     return res.status(201).json({ success: true, board })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to create board',
+      message: 'Failed to create board',
     })
   }
 }
@@ -56,9 +58,10 @@ const getBoards = async (req, res) => {
     const boards = await Board.find({ owner: req.user._id }).sort({ createdAt: -1 })
     return res.status(200).json({ success: true, boards })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to fetch boards',
+      message: 'Failed to fetch boards',
     })
   }
 }
@@ -83,9 +86,10 @@ const getBoardById = async (req, res) => {
 
     return res.status(200).json({ success: true, board })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to fetch board',
+      message: 'Failed to fetch board',
     })
   }
 }
@@ -138,9 +142,10 @@ const updateBoard = async (req, res) => {
 
     return res.status(200).json({ success: true, board: updated })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to update board',
+      message: 'Failed to update board',
     })
   }
 }
@@ -163,13 +168,17 @@ const deleteBoard = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' })
     }
 
+    // Cascade: remove all tasks belonging to this board
+    await Task.deleteMany({ board: board._id })
+
     await board.deleteOne()
 
     return res.status(200).json({ success: true, message: 'Board deleted' })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to delete board',
+      message: 'Failed to delete board',
     })
   }
 }

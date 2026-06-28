@@ -10,9 +10,15 @@ const buildUserResponse = (user) => ({
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password } = req.body || {}
 
-    if (!name || !email || !password) {
+    if (
+      typeof name !== 'string' ||
+      !name.trim() ||
+      typeof email !== 'string' ||
+      !email.trim() ||
+      typeof password !== 'string'
+    ) {
       return res.status(400).json({
         success: false,
         message: 'Please provide name, email, and password',
@@ -26,7 +32,7 @@ const registerUser = async (req, res) => {
       })
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase()
+    const normalizedEmail = email.trim().toLowerCase()
     const existingUser = await User.findOne({ email: normalizedEmail })
 
     if (existingUser) {
@@ -40,7 +46,7 @@ const registerUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt)
 
     const user = await User.create({
-      name,
+      name: name.trim(),
       email: normalizedEmail,
       password: hashedPassword,
     })
@@ -51,25 +57,26 @@ const registerUser = async (req, res) => {
       user: buildUserResponse(user),
     })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Registration failed',
+      message: 'Registration failed',
     })
   }
 }
 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body
+    const { email, password } = req.body || {}
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password',
       })
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase()
+    const normalizedEmail = email.trim().toLowerCase()
     const user = await User.findOne({ email: normalizedEmail })
 
     if (!user) {
@@ -94,9 +101,10 @@ const loginUser = async (req, res) => {
       user: buildUserResponse(user),
     })
   } catch (error) {
+    console.error(error)
     return res.status(500).json({
       success: false,
-      message: error.message || 'Login failed',
+      message: 'Login failed',
     })
   }
 }
