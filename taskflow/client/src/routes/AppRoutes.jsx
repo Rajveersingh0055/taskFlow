@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import ProtectedRoute from '../components/ProtectedRoute.jsx'
+import BoardDetails from '../pages/BoardDetails.jsx'
 import Dashboard from '../pages/Dashboard.jsx'
 import Login from '../pages/Login.jsx'
 import NotFound from '../pages/NotFound.jsx'
@@ -10,7 +12,22 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/boards/:boardId"
+        element={
+          <ProtectedRoute>
+            <BoardDetails />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

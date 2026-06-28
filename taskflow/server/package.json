@@ -2,7 +2,7 @@
   "name": "taskflow-server",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
+  "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
