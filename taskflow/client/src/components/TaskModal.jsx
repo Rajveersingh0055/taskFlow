@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
+import { getSuggestion } from '../services/aiService'
+
+// ─── Options ─────────────────────────────────────────────────────────────────
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
@@ -12,10 +16,83 @@ const STATUS_OPTIONS = [
   { value: 'done', label: 'Done' },
 ]
 
+// ─── AI Suggestion Panel ──────────────────────────────────────────────────────
+
+function SuggestionPanel({ suggestion, isFallback, onAccept, onIgnore }) {
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="text-lg">✨</span>
+        <span className="text-sm font-bold text-violet-800">
+          AI Suggestion
+          {isFallback && (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              Fallback
+            </span>
+          )}
+        </span>
+      </div>
+
+      {/* Fields */}
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="rounded-lg bg-white p-2.5 shadow-sm">
+          <p className="font-semibold text-violet-600 uppercase tracking-wide text-[10px]">
+            Estimated Effort
+          </p>
+          <p className="mt-1 font-bold text-slate-800">
+            {suggestion.estimatedEffort || '—'}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white p-2.5 shadow-sm">
+          <p className="font-semibold text-violet-600 uppercase tracking-wide text-[10px]">
+            Suggested Due Date
+          </p>
+          <p className="mt-1 font-bold text-slate-800">
+            {suggestion.suggestedDueDate
+              ? new Date(suggestion.suggestedDueDate).toLocaleDateString(
+                  'en-US',
+                  { month: 'short', day: 'numeric', year: 'numeric' },
+                )
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Reasoning */}
+      <p className="text-xs text-slate-600 italic leading-relaxed">
+        {suggestion.reasoning}
+      </p>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          id="ai-accept-btn"
+          onClick={onAccept}
+          className="flex-1 rounded-lg bg-violet-600 py-2 text-xs font-semibold text-white transition hover:bg-violet-700 active:scale-95"
+        >
+          ✓ Accept
+        </button>
+        <button
+          type="button"
+          id="ai-ignore-btn"
+          onClick={onIgnore}
+          className="flex-1 rounded-lg border border-violet-200 bg-white py-2 text-xs font-semibold text-slate-700 transition hover:bg-violet-50 active:scale-95"
+        >
+          Ignore
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Task Modal ───────────────────────────────────────────────────────────────
+
 /**
  * TaskModal — reusable create / edit modal for tasks.
  * Props:
- *  - initialData: task object (edit mode) or null (create mode)
+ *  - initialData: task object (edit mode) or partial { status } (create mode)
  *  - boardId: required in create mode
  *  - onSubmit(formData): called with form payload
  *  - onClose(): called to dismiss modal
@@ -38,6 +115,12 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [apiError, setApiError] = useState('')
+
+  // ── AI Suggestion state ──────────────────────────────────────────────────────
+  const [isSuggesting, setIsSuggesting] = useState(false)
+  const [suggestion, setSuggestion] = useState(null)
+  const [suggestionIsFallback, setSuggestionIsFallback] = useState(false)
+
   const titleRef = useRef(null)
 
   // Auto-focus title on open
@@ -57,8 +140,9 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    // Clear field error on change
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
+    // Clear suggestion if title/description changes
+    if (name === 'title' || name === 'description') setSuggestion(null)
   }
 
   const validate = () => {
@@ -68,6 +152,59 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
       newErrors.title = 'Title cannot exceed 150 characters'
     return newErrors
   }
+
+  // ── AI Suggest handler ───────────────────────────────────────────────────────
+
+  const handleSuggest = async () => {
+    const titleTrimmed = formData.title.trim()
+    if (!titleTrimmed) {
+      setErrors({ title: 'Enter a title first to get AI suggestions' })
+      return
+    }
+
+    try {
+      setIsSuggesting(true)
+      setSuggestion(null)
+
+      const result = await getSuggestion({
+        title: titleTrimmed,
+        description: formData.description.trim(),
+      })
+
+      setSuggestion(result.suggestion)
+      setSuggestionIsFallback(result.fallback === true)
+
+      if (result.fallback) {
+        toast('AI unavailable — showing default estimate', {
+          icon: '⚠️',
+          style: { background: '#78350f', color: '#fff' },
+        })
+      } else {
+        toast.success('AI suggestion loaded!')
+      }
+    } catch (err) {
+      toast.error('Could not fetch AI suggestion')
+      console.error(err)
+    } finally {
+      setIsSuggesting(false)
+    }
+  }
+
+  // ── Accept AI suggestion ─────────────────────────────────────────────────────
+
+  const handleAcceptSuggestion = () => {
+    setFormData((prev) => ({
+      ...prev,
+      estimatedEffort: suggestion.estimatedEffort || prev.estimatedEffort,
+      dueDate: suggestion.suggestedDueDate
+        ? suggestion.suggestedDueDate.split('T')[0]
+        : prev.dueDate,
+    }))
+    setSuggestion(null)
+    toast.success('Estimate applied ✓')
+  }
+
+  // ── Form submit ──────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -90,7 +227,6 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
         estimatedEffort: formData.estimatedEffort.trim(),
       }
 
-      // In create mode attach the boardId
       if (!isEditing) payload.board = boardId
 
       await onSubmit(payload)
@@ -101,6 +237,8 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
       setIsSubmitting(false)
     }
   }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -116,7 +254,7 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
       />
 
       {/* Panel */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/10 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2
@@ -143,7 +281,7 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
         )}
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
-          {/* ── Title ─────────────────────────────────────────────────────── */}
+          {/* ── Title ──────────────────────────────────────────────────────── */}
           <div>
             <label
               htmlFor="task-title"
@@ -176,7 +314,7 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
             )}
           </div>
 
-          {/* ── Description ───────────────────────────────────────────────── */}
+          {/* ── Description ────────────────────────────────────────────────── */}
           <div>
             <label
               htmlFor="task-description"
@@ -192,15 +330,47 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="Describe the task..."
+              placeholder="Describe the task…"
               rows={3}
               className="mt-1.5 w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
             />
           </div>
 
-          {/* ── Priority + Status (row) ────────────────────────────────────── */}
+          {/* ── AI Suggest Button ───────────────────────────────────────────── */}
+          <div>
+            <button
+              type="button"
+              id="ai-suggest-btn"
+              onClick={handleSuggest}
+              disabled={isSuggesting}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 py-2.5 text-sm font-semibold text-violet-700 transition hover:border-violet-400 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
+            >
+              {isSuggesting ? (
+                <>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-violet-700" />
+                  Asking AI…
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  Suggest Estimate with AI
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* ── AI Suggestion Panel ─────────────────────────────────────────── */}
+          {suggestion && (
+            <SuggestionPanel
+              suggestion={suggestion}
+              isFallback={suggestionIsFallback}
+              onAccept={handleAcceptSuggestion}
+              onIgnore={() => setSuggestion(null)}
+            />
+          )}
+
+          {/* ── Priority + Status (row) ─────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Priority */}
             <div>
               <label
                 htmlFor="task-priority"
@@ -249,9 +419,8 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
             )}
           </div>
 
-          {/* ── Due Date + Estimated Effort (row) ─────────────────────────── */}
+          {/* ── Due Date + Estimated Effort (row) ──────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Due Date */}
             <div>
               <label
                 htmlFor="task-dueDate"
@@ -272,7 +441,6 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
               />
             </div>
 
-            {/* Estimated Effort */}
             <div>
               <label
                 htmlFor="task-estimatedEffort"
@@ -295,7 +463,7 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
             </div>
           </div>
 
-          {/* ── Actions ───────────────────────────────────────────────────── */}
+          {/* ── Actions ────────────────────────────────────────────────────── */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
@@ -304,8 +472,8 @@ function TaskModal({ initialData = null, boardId, onSubmit, onClose }) {
             >
               {isSubmitting
                 ? isEditing
-                  ? 'Saving...'
-                  : 'Creating...'
+                  ? 'Saving…'
+                  : 'Creating…'
                 : isEditing
                   ? 'Save Changes'
                   : 'Create Task'}
