@@ -494,12 +494,15 @@ VITE_API_URL=https://your-backend-render-url.onrender.com
 
 To add visual evidence to your submission, capture and place the following screenshots under a assets/ directory:
 1. **Login**: Login form with input validation highlights.
+![alt text](image-1.png)
 2. **Register**: Sign-up form with password checks.
+![alt text](image.png)
 3. **Dashboard**: Board cards grid with dynamic search and top analytics cards.
+![alt text](image-2.png)
 4. **Board Details**: 3-column Kanban layout with custom priorities and status buttons.
+![alt text](image-3.png)
 5. **Task Modal**: Task form showing the AI Suggestion dialog.
-6. **Mobile View**: Drawer menu and 1-column responsive layout.
-
+![alt text](image-4.png)
 ---
 
 ## Deployment
