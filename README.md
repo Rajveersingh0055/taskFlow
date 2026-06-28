@@ -502,7 +502,7 @@ To add visual evidence to your submission, capture and place the following scree
 4. **Board Details**: 3-column Kanban layout with custom priorities and status buttons.
 ![alt text](image-3.png)
 5. **Task Modal**: Task form showing the AI Suggestion dialog.
-![alt text](image-4.png)
+![alt text](image-5.png)
 ---
 
 ## Deployment
