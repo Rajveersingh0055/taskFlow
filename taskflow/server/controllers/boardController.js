@@ -14,13 +14,29 @@ const createBoard = async (req, res) => {
   try {
     const { title, description } = req.body
 
-    if (!title || !title.trim()) {
+    const trimmedTitle = typeof title === 'string' ? title.trim() : ''
+
+    if (!trimmedTitle) {
       return res.status(400).json({ success: false, message: 'Title is required' })
     }
 
+    if (trimmedTitle.length > 100) {
+      return res.status(400).json({ success: false, message: 'Title cannot exceed 100 characters' })
+    }
+
+    const trimmedDescription = description == null
+      ? ''
+      : typeof description === 'string'
+        ? description.trim()
+        : null
+
+    if (trimmedDescription === null) {
+      return res.status(400).json({ success: false, message: 'Description must be a string' })
+    }
+
     const board = await Board.create({
-      title: title.trim(),
-      description: description ? description.trim() : '',
+      title: trimmedTitle,
+      description: trimmedDescription,
       owner: req.user._id,
     })
 
@@ -95,10 +111,17 @@ const updateBoard = async (req, res) => {
     }
 
     if (title !== undefined) {
-      if (typeof title !== 'string' || !title.trim()) {
+      const trimmedTitle = typeof title === 'string' ? title.trim() : ''
+
+      if (!trimmedTitle) {
         return res.status(400).json({ success: false, message: 'Title must be a non-empty string' })
       }
-      board.title = title.trim()
+
+      if (trimmedTitle.length > 100) {
+        return res.status(400).json({ success: false, message: 'Title cannot exceed 100 characters' })
+      }
+
+      board.title = trimmedTitle
     }
 
     if (description !== undefined) {
