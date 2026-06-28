@@ -1,6 +1,8 @@
 const cors = require('cors')
 const dotenv = require('dotenv')
 const express = require('express')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 const mongoose = require('mongoose')
 const { connectDBWithRetry } = require('./config/db')
 const requireDatabase = require('./middleware/dbMiddleware')
@@ -14,13 +16,42 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors())
+// ── Security Hardening ────────────────────────────────────────────────────────
+app.use(helmet())
+
+// Rate limiting: max 150 requests per 15 minutes per IP for /api endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 150,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use('/api', apiLimiter)
+
+// CORS Configuration
+const corsOptions = {
+  origin: process.env.CLIENT_URL || '*',
+  optionsSuccessStatus: 200,
+}
+app.use(cors(corsOptions))
 app.use(express.json())
 
 app.use('/api/auth', requireDatabase, authRoutes)
 app.use('/api/boards', requireDatabase, boardRoutes)
 app.use('/api/tasks', requireDatabase, taskRoutes)
 app.use('/api/ai', aiRoutes) // No DB needed for AI calls
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'UP',
+    database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
+    timestamp: new Date(),
+  })
+})
 
 app.get('/', (req, res) => {
   res.status(200).json({
