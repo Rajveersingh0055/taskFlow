@@ -1,36 +1,179 @@
+import { useCallback, useEffect, useState } from 'react'
+import BoardCard from '../components/BoardCard.jsx'
+import BoardModal from '../components/BoardModal.jsx'
+import DeleteBoardModal from '../components/DeleteBoardModal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import {
+  createBoard,
+  deleteBoard,
+  getBoards,
+  updateBoard,
+} from '../services/boardService'
 
 function Dashboard() {
   const { user } = useAuth()
 
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [boards, setBoards] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingBoard, setEditingBoard] = useState(null)   // Board object or null
+  const [deletingBoard, setDeletingBoard] = useState(null) // Board object or null
+
+  // ── Data Fetching ───────────────────────────────────────────────────────────
+  const fetchBoards = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const data = await getBoards()
+      setBoards(data.boards)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load boards. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBoards()
+  }, [fetchBoards])
+
+  // ── CRUD Handlers ──────────────────────────────────────────────────────────
+  const handleCreate = async (formData) => {
+    const data = await createBoard(formData)
+    setBoards((prev) => [data.board, ...prev])
+    setIsCreateOpen(false)
+  }
+
+  const handleUpdate = async (formData) => {
+    const data = await updateBoard(editingBoard._id, formData)
+    setBoards((prev) =>
+      prev.map((b) => (b._id === editingBoard._id ? data.board : b)),
+    )
+    setEditingBoard(null)
+  }
+
+  const handleDelete = async () => {
+    await deleteBoard(deletingBoard._id)
+    setBoards((prev) => prev.filter((b) => b._id !== deletingBoard._id))
+    setDeletingBoard(null)
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-primary-600">
-          TaskFlow
-        </p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-          Welcome{user?.name ? `, ${user.name}` : ''}
-        </h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          Your protected dashboard is connected to the authentication module.
-        </p>
+    <>
+      {/* ── Page Header ─────────────────────────────────────────────────── */}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            My Boards
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {user?.name && <span>Welcome back, <strong>{user.name}</strong> · </span>}
+            {loading
+              ? 'Loading...'
+              : `${boards.length} board${boards.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          id="create-board-btn"
+          onClick={() => setIsCreateOpen(true)}
+          className="flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 active:scale-95"
+        >
+          <span className="text-base leading-none" aria-hidden="true">+</span>
+          Create Board
+        </button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-950">Account</h2>
-        <dl className="mt-4 space-y-3 text-sm">
-          <div>
-            <dt className="font-medium text-slate-500">Name</dt>
-            <dd className="mt-1 text-slate-900">{user?.name || 'Loading...'}</dd>
-          </div>
-          <div>
-            <dt className="font-medium text-slate-500">Email</dt>
-            <dd className="mt-1 text-slate-900">{user?.email || 'Loading...'}</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
+      {/* ── Loading State ─────────────────────────────────────────────────── */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-28 text-slate-400">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-primary-600" />
+          <p className="mt-4 text-sm">Fetching your boards…</p>
+        </div>
+      )}
+
+      {/* ── Error State ───────────────────────────────────────────────────── */}
+      {!loading && error && (
+        <div className="flex flex-col items-center rounded-xl border border-red-200 bg-red-50 px-6 py-10 text-center">
+          <span className="text-4xl" aria-hidden="true">⚠️</span>
+          <p className="mt-3 text-sm font-medium text-red-700">{error}</p>
+          <button
+            type="button"
+            onClick={fetchBoards}
+            className="mt-4 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* ── Empty State ───────────────────────────────────────────────────── */}
+      {!loading && !error && boards.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-24 text-center">
+          <span className="text-6xl" aria-hidden="true">📋</span>
+          <h2 className="mt-5 text-lg font-bold text-slate-700">No boards yet</h2>
+          <p className="mt-2 max-w-xs text-sm text-slate-500">
+            Create your first board to start organising your work.
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="mt-6 rounded-xl bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 active:scale-95"
+          >
+            Create your first board
+          </button>
+        </div>
+      )}
+
+      {/* ── Board Grid ────────────────────────────────────────────────────── */}
+      {!loading && !error && boards.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {boards.map((board, index) => (
+            <BoardCard
+              key={board._id}
+              board={board}
+              index={index}
+              onEdit={() => setEditingBoard(board)}
+              onDelete={() => setDeletingBoard(board)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Create Modal ──────────────────────────────────────────────────── */}
+      {isCreateOpen && (
+        <BoardModal
+          title="Create Board"
+          onSubmit={handleCreate}
+          onClose={() => setIsCreateOpen(false)}
+        />
+      )}
+
+      {/* ── Edit Modal ────────────────────────────────────────────────────── */}
+      {editingBoard && (
+        <BoardModal
+          title="Edit Board"
+          initialData={editingBoard}
+          onSubmit={handleUpdate}
+          onClose={() => setEditingBoard(null)}
+        />
+      )}
+
+      {/* ── Delete Confirmation ───────────────────────────────────────────── */}
+      {deletingBoard && (
+        <DeleteBoardModal
+          board={deletingBoard}
+          onConfirm={handleDelete}
+          onClose={() => setDeletingBoard(null)}
+        />
+      )}
+    </>
   )
 }
 

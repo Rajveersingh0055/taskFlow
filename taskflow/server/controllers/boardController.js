@@ -1,9 +1,12 @@
+const mongoose = require('mongoose')
 const Board = require('../models/Board')
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const verifyOwnership = (board, userId) =>
   board.owner.toString() === userId.toString()
+
+const isValidBoardId = (id) => mongoose.Types.ObjectId.isValid(id)
 
 // ─── Create Board ────────────────────────────────────────────────────────────
 
@@ -48,6 +51,10 @@ const getBoards = async (req, res) => {
 
 const getBoardById = async (req, res) => {
   try {
+    if (!isValidBoardId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid board id' })
+    }
+
     const board = await Board.findById(req.params.id)
 
     if (!board) {
@@ -72,6 +79,11 @@ const getBoardById = async (req, res) => {
 const updateBoard = async (req, res) => {
   try {
     const { title, description } = req.body
+
+    if (!isValidBoardId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid board id' })
+    }
+
     const board = await Board.findById(req.params.id)
 
     if (!board) {
@@ -83,14 +95,20 @@ const updateBoard = async (req, res) => {
     }
 
     if (title !== undefined) {
-      if (!title.trim()) {
-        return res.status(400).json({ success: false, message: 'Title cannot be empty' })
+      if (typeof title !== 'string' || !title.trim()) {
+        return res.status(400).json({ success: false, message: 'Title must be a non-empty string' })
       }
       board.title = title.trim()
     }
 
     if (description !== undefined) {
-      board.description = description.trim()
+      if (description === null) {
+        board.description = ''
+      } else if (typeof description !== 'string') {
+        return res.status(400).json({ success: false, message: 'Description must be a string' })
+      } else {
+        board.description = description.trim()
+      }
     }
 
     const updated = await board.save()
@@ -108,6 +126,10 @@ const updateBoard = async (req, res) => {
 
 const deleteBoard = async (req, res) => {
   try {
+    if (!isValidBoardId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid board id' })
+    }
+
     const board = await Board.findById(req.params.id)
 
     if (!board) {

@@ -94,7 +94,8 @@ Response:
 
 ```json
 {
-  "message": "TaskFlow API Running"
+  "message": "TaskFlow API Running",
+  "database": "connected"
 }
 ```
 
@@ -187,7 +188,7 @@ Success response:
 
 ## Verification Checklist
 
-- MongoDB connection is reusable and exits on failure.
+- MongoDB connection is reusable and retries automatically if the initial connection fails.
 - User schema includes name, email, password, and timestamps.
 - Passwords are hashed with bcrypt before storage.
 - JWT tokens are signed with `JWT_SECRET` and expire in 7 days.
