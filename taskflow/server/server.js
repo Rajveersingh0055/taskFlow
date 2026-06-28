@@ -14,6 +14,7 @@ const aiRoutes = require('./routes/aiRoutes')
 dotenv.config()
 
 const app = express()
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000
 
 // ── Security Hardening ────────────────────────────────────────────────────────
@@ -34,10 +35,12 @@ app.use('/api', apiLimiter)
 
 // CORS Configuration
 const corsOptions = {
-  origin: process.env.CLIENT_URL || '*',
+  origin: process.env.CLIENT_URL,
+  credentials: true,
   optionsSuccessStatus: 200,
-}
-app.use(cors(corsOptions))
+};
+
+app.use(cors(corsOptions));
 app.use(express.json())
 
 app.use('/api/auth', requireDatabase, authRoutes)
